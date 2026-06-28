@@ -1,6 +1,6 @@
 module.exports = CEconItem;
 
-function CEconItem(item, description, contextID) {
+function CEconItem(item, description, contextID, assetProperties) {
 	var thing;
 	for (thing in item) {
 		if (item.hasOwnProperty(thing)) {
@@ -68,9 +68,20 @@ function CEconItem(item, description, contextID) {
 
 	// Restore cache_expiration, if we can (for CS:GO items)
 	if (this.appid == 730 && this.contextid == 2 && this.owner_descriptions) {
-		let description = this.owner_descriptions.find(d => d.value && d.value.indexOf('Tradable/Marketable After ') == 0);
+		let description = this.owner_descriptions.find((d) => d.value && d.value.indexOf("Tradable/Marketable After ") == 0);
 		if (description) {
-			let date = new Date(description.value.substring(26).replace(/[,()]/g, ''));
+			const match = description.value.match(/(\d{1,2}) (\w+) @ (\d{1,2}:\d{2})(am|pm)/i);
+			const [, day, month, time, meridian] = match;
+			const now = new Date();
+			let year = now.getFullYear();
+			let date = new Date(`${day} ${month} ${year} ${time} ${meridian}`);
+
+			if (date.getTime() < now.getTime()) {
+				date = new Date(
+					`${day} ${month} ${year + 1} ${time} ${meridian}`,
+				);
+			}
+
 			if (date) {
 				this.cache_expiration = date.toISOString();
 			}
@@ -84,6 +95,11 @@ function CEconItem(item, description, contextID) {
 
 	if (this.actions === "") {
 		this.actions = [];
+	}
+
+	// Assign asset_properties if provided
+	if (assetProperties) {
+		this.asset_properties = assetProperties;
 	}
 
 	// One wouldn't think that we need this if statement, but apparently v8 has a weird bug/quirk where deleting a
